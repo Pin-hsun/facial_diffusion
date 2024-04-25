@@ -4,8 +4,11 @@ from PIL import Image
 import os
 import torch
 import numpy as np
-
-from .util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+import matplotlib.pyplot as plt
+try:
+    from data.util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+except:
+    from util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -173,4 +176,70 @@ class ColorizationDataset(data.Dataset):
     def __len__(self):
         return len(self.flist)
 
+class InpaintAUDataset(data.Dataset):
+    def __init__(self, data_root, mask_config={}, data_len=-1, image_size=[128, 128], loader=pil_loader):
+        imgs = make_dataset(data_root)
+        if data_len > 0:
+            self.imgs = imgs[:int(data_len)]
+        else:
+            self.imgs = imgs
+        self.tfs = transforms.Compose([
+                transforms.CenterCrop((178, 178)), #for celebA dataset
+                transforms.Resize((image_size[0], image_size[1])),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5,0.5, 0.5])
+        ])
+        self.loader = loader
+        self.mask_config = mask_config
+        self.mask_mode = self.mask_config['mask_mode']
+        self.image_size = image_size
 
+    def __getitem__(self, index):
+        ret = {}
+        path = self.imgs[index]
+        img = self.tfs(self.loader(path))
+        mask = self.get_mask()
+        cond_image = img*(1. - mask) + mask*torch.randn_like(img)
+        mask_img = img*(1. - mask) + mask
+
+        ret['gt_image'] = img
+        ret['cond_image'] = cond_image
+        ret['mask_image'] = mask_img
+        ret['mask'] = mask
+        ret['path'] = path.rsplit("/")[-1].rsplit("\\")[-1]
+        return ret
+
+    def __len__(self):
+        return len(self.imgs)
+
+    def get_mask(self):
+        if self.mask_mode == 'bbox':
+            mask = bbox2mask(self.image_size, random_bbox())
+        elif self.mask_mode == 'center':
+            h, w = self.image_size
+            mask = bbox2mask(self.image_size, (h//4, w//4, h//2, w//2))
+        elif self.mask_mode == 'irregular':
+            mask = get_irregular_mask(self.image_size)
+        elif self.mask_mode == 'free_form':
+            mask = brush_stroke_mask(self.image_size)
+        elif self.mask_mode == 'hybrid':
+            regular_mask = bbox2mask(self.image_size, random_bbox())
+            irregular_mask = brush_stroke_mask(self.image_size, )
+            mask = regular_mask | irregular_mask
+        elif self.mask_mode == 'file':
+            pass
+        else:
+            raise NotImplementedError(
+                f'Mask mode {self.mask_mode} has not been implemented.')
+        return torch.from_numpy(mask).permute(2,0,1)
+
+if __name__ == "__main__":
+    import sys
+    sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
+    dataset = InpaintDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'center'})
+    print(len(dataset))
+    mask_img = dataset[0]['mask_image'].permute(1,2,0).numpy()
+    mask_img = (mask_img + 1) / 2
+    print(mask_img.shape)
+    plt.imsave('mask.jpg', mask_img)
+    plt.close()
