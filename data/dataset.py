@@ -5,10 +5,8 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-try:
-    from data.util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
-except:
-    from util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+from data.util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+from data.util.au_mask import facial_mask
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -18,6 +16,9 @@ IMG_EXTENSIONS = [
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
 
+def is_npy_file(filename):
+    return filename.endswith('.npy')
+
 def make_dataset(dir):
     if os.path.isfile(dir):
         images = [i for i in np.genfromtxt(dir, dtype=np.str, encoding='utf-8')]
@@ -26,7 +27,7 @@ def make_dataset(dir):
         assert os.path.isdir(dir), '%s is not a valid directory' % dir
         for root, _, fnames in sorted(os.walk(dir)):
             for fname in sorted(fnames):
-                if is_image_file(fname):
+                if is_image_file(fname) or is_npy_file(fname):
                     path = os.path.join(root, fname)
                     images.append(path)
 
@@ -75,7 +76,8 @@ class InpaintDataset(data.Dataset):
             mask = bbox2mask(self.image_size, random_bbox())
         elif self.mask_mode == 'center':
             h, w = self.image_size
-            mask = bbox2mask(self.image_size, (h//4, w//4, h//2, w//2))
+            # mask = bbox2mask(self.image_size, (h//4, w//4, h//2, w//2))
+            mask = bbox2mask(self.image_size, (h // 4 + 20, w // 4, h // 2 , w // 2))
         elif self.mask_mode == 'irregular':
             mask = get_irregular_mask(self.image_size)
         elif self.mask_mode == 'free_form':
@@ -178,27 +180,42 @@ class ColorizationDataset(data.Dataset):
 
 class InpaintAUDataset(data.Dataset):
     def __init__(self, data_root, mask_config={}, data_len=-1, image_size=[128, 128], loader=pil_loader):
+        landmark_root = os.path.join(data_root, 'landmark')
         imgs = make_dataset(data_root)
+        lds = make_dataset(landmark_root)
+        one_img = loader(imgs[0])
+
         if data_len > 0:
             self.imgs = imgs[:int(data_len)]
+            self.lds = lds[:int(data_len)]
         else:
             self.imgs = imgs
+            self.lds = lds
         self.tfs = transforms.Compose([
-                transforms.CenterCrop((178, 178)), #for celebA dataset
+                transforms.CenterCrop((min(one_img.size), min(one_img.size))), #for celebA dataset
                 transforms.Resize((image_size[0], image_size[1])),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5,0.5, 0.5])
+        ])
+        self.ld_tfs = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.CenterCrop((178, 178)), #for celebA dataset
+                transforms.Resize((image_size[0], image_size[1])),
+                transforms.ToTensor()
         ])
         self.loader = loader
         self.mask_config = mask_config
         self.mask_mode = self.mask_config['mask_mode']
         self.image_size = image_size
+        self.ori_image_size = one_img.size
 
     def __getitem__(self, index):
         ret = {}
         path = self.imgs[index]
         img = self.tfs(self.loader(path))
-        mask = self.get_mask()
+        mask = self.get_mask(index)
+        if self.mask_mode == 'au':
+            mask = self.ld_tfs(mask)
         cond_image = img*(1. - mask) + mask*torch.randn_like(img)
         mask_img = img*(1. - mask) + mask
 
@@ -212,7 +229,7 @@ class InpaintAUDataset(data.Dataset):
     def __len__(self):
         return len(self.imgs)
 
-    def get_mask(self):
+    def get_mask(self, index=None):
         if self.mask_mode == 'bbox':
             mask = bbox2mask(self.image_size, random_bbox())
         elif self.mask_mode == 'center':
@@ -226,6 +243,9 @@ class InpaintAUDataset(data.Dataset):
             regular_mask = bbox2mask(self.image_size, random_bbox())
             irregular_mask = brush_stroke_mask(self.image_size, )
             mask = regular_mask | irregular_mask
+        elif self.mask_mode == 'au':
+            ld = np.load(self.lds[index]).tolist()
+            mask = facial_mask(ld, self.ori_image_size)
         elif self.mask_mode == 'file':
             pass
         else:
@@ -236,10 +256,10 @@ class InpaintAUDataset(data.Dataset):
 if __name__ == "__main__":
     import sys
     sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
-    dataset = InpaintDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'center'})
+    dataset = InpaintAUDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'au'})
     print(len(dataset))
-    mask_img = dataset[0]['mask_image'].permute(1,2,0).numpy()
-    mask_img = (mask_img + 1) / 2
-    print(mask_img.shape)
-    plt.imsave('mask.jpg', mask_img)
-    plt.close()
+    for i in range(20):
+        mask_img = dataset[i]['mask_image'].permute(1,2,0).numpy()
+        mask_img = (mask_img + 1) / 2
+        plt.imsave('tmp/' + str(i) + 'mask.jpg', mask_img)
+        plt.close()
