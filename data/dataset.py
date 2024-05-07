@@ -231,16 +231,18 @@ class InpaintAUDataset(data.Dataset):
 
     def get_mask(self, index=None):
         if self.mask_mode == 'bbox':
-            mask = bbox2mask(self.image_size, random_bbox())
+            mask = bbox2mask(self.image_size, random_bbox(img_shape=self.image_size,
+                                                          max_bbox_shape=(self.image_size[0]//2, self.image_size[1]//2)))
         elif self.mask_mode == 'center':
             h, w = self.image_size
-            mask = bbox2mask(self.image_size, (h//4, w//4, h//2, w//2))
+            mask = bbox2mask(self.image_size, (h // 4 + 20, w // 4, h // 2 , w // 2))
         elif self.mask_mode == 'irregular':
             mask = get_irregular_mask(self.image_size)
         elif self.mask_mode == 'free_form':
             mask = brush_stroke_mask(self.image_size)
         elif self.mask_mode == 'hybrid':
-            regular_mask = bbox2mask(self.image_size, random_bbox())
+            h, w = self.image_size
+            regular_mask = bbox2mask(self.image_size, (h // 4 + 20, w // 4, h // 2 , w // 2))
             irregular_mask = brush_stroke_mask(self.image_size, )
             mask = regular_mask | irregular_mask
         elif self.mask_mode == 'au':
@@ -256,7 +258,7 @@ class InpaintAUDataset(data.Dataset):
 if __name__ == "__main__":
     import sys
     sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
-    dataset = InpaintAUDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'au'})
+    dataset = InpaintAUDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'hybrid'})
     print(len(dataset))
     for i in range(20):
         mask_img = dataset[i]['mask_image'].permute(1,2,0).numpy()
