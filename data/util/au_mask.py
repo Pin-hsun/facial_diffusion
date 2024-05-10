@@ -188,7 +188,7 @@ def plot_action_units_ellipsoid(au: int,
         x = int((l_x + r_x) / 2)
         y = int((l_y + r_y) / 2)
         major = max(int((r_x - l_x) / 2), 0) + 7
-        minor = max(int((r_y - l_y) / 2), 0) + 7
+        minor = max(int((r_y - l_y) / 2), 0) + 10
 
         if major == 0:
             major = 5

@@ -5,8 +5,12 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from data.util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
-from data.util.au_mask import facial_mask
+try:
+    from util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+    from util.au_mask import facial_mask
+except:
+    from data.util.mask import (bbox2mask, brush_stroke_mask, get_irregular_mask, random_bbox, random_cropping_bbox)
+    from data.util.au_mask import facial_mask
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -27,11 +31,25 @@ def make_dataset(dir):
         assert os.path.isdir(dir), '%s is not a valid directory' % dir
         for root, _, fnames in sorted(os.walk(dir)):
             for fname in sorted(fnames):
-                if is_image_file(fname) or is_npy_file(fname):
+                if is_image_file(fname):
                     path = os.path.join(root, fname)
                     images.append(path)
 
     return images
+
+def make_landmark_dataset(dir):
+    if os.path.isfile(dir):
+        landmark = [i for i in np.genfromtxt(dir, dtype=np.str, encoding='utf-8')]
+    else:
+        landmark = []
+        assert os.path.isdir(dir), '%s is not a valid directory' % dir
+        for root, _, fnames in sorted(os.walk(dir)):
+            for fname in sorted(fnames):
+                if is_npy_file(fname):
+                    path = os.path.join(root, fname)
+                    landmark.append(path)
+
+    return landmark
 
 def pil_loader(path):
     return Image.open(path).convert('RGB')
@@ -179,18 +197,21 @@ class ColorizationDataset(data.Dataset):
         return len(self.flist)
 
 class InpaintAUDataset(data.Dataset):
-    def __init__(self, data_root, mask_config={}, data_len=-1, image_size=[128, 128], loader=pil_loader):
-        landmark_root = os.path.join(data_root, 'landmark')
-        imgs = make_dataset(data_root)
-        lds = make_dataset(landmark_root)
+    def __init__(self, data_root, GT, condition, landmark, mask_config={}, data_len=-1, image_size=[128, 128], loader=pil_loader):
+        imgs = make_dataset(os.path.join(data_root, GT))
+        cond_imgs = make_dataset(os.path.join(data_root, condition))
+        lds = make_landmark_dataset(os.path.join(data_root, landmark,'landmark'))
+
         one_img = loader(imgs[0])
 
         if data_len > 0:
             self.imgs = imgs[:int(data_len)]
             self.lds = lds[:int(data_len)]
+            self.cond_imgs = cond_imgs[:int(data_len)]
         else:
             self.imgs = imgs
             self.lds = lds
+            self.cond_imgs = cond_imgs
         self.tfs = transforms.Compose([
                 transforms.CenterCrop((min(one_img.size), min(one_img.size))), #for celebA dataset
                 transforms.Resize((image_size[0], image_size[1])),
@@ -199,7 +220,7 @@ class InpaintAUDataset(data.Dataset):
         ])
         self.ld_tfs = transforms.Compose([
                 transforms.ToPILImage(),
-                transforms.CenterCrop((178, 178)), #for celebA dataset
+                transforms.CenterCrop((min(one_img.size), min(one_img.size))), #for celebA dataset
                 transforms.Resize((image_size[0], image_size[1])),
                 transforms.ToTensor()
         ])
@@ -208,6 +229,7 @@ class InpaintAUDataset(data.Dataset):
         self.mask_mode = self.mask_config['mask_mode']
         self.image_size = image_size
         self.ori_image_size = one_img.size
+        self.condition = condition
 
     def __getitem__(self, index):
         ret = {}
@@ -216,7 +238,11 @@ class InpaintAUDataset(data.Dataset):
         mask = self.get_mask(index)
         if self.mask_mode == 'au':
             mask = self.ld_tfs(mask)
-        cond_image = img*(1. - mask) + mask*torch.randn_like(img)
+        if self.condition == None:
+            cond_image = img*(1. - mask) + mask*torch.randn_like(img)
+        else:
+            cond_path = self.cond_imgs[index]
+            cond_image = self.tfs(self.loader(cond_path))
         mask_img = img*(1. - mask) + mask
 
         ret['gt_image'] = img
@@ -258,9 +284,9 @@ class InpaintAUDataset(data.Dataset):
 if __name__ == "__main__":
     import sys
     sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
-    dataset = InpaintAUDataset(data_root="/media/ziyi/glory/CelebA/celeba_smile/test", mask_config={'mask_mode':'hybrid'})
+    dataset = InpaintAUDataset(data_root="/home/glory/projects/NTU_Parkinson_Project/results/CelebA/240418_acgan_ep90/XY", mask_config={'mask_mode':'au'})
     print(len(dataset))
-    for i in range(20):
+    for i in range(500):
         mask_img = dataset[i]['mask_image'].permute(1,2,0).numpy()
         mask_img = (mask_img + 1) / 2
         plt.imsave('tmp/' + str(i) + 'mask.jpg', mask_img)

@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-prj = 'celeba_smileAU_onnosmile'
+prj = 'celeba_smileAU_onXY(240418_acgan)_XYmask'
 INPUT_PATH = f'/media/ziyi/glory/logs_pin/diffusion/{prj}/results/test/0'
 OUTPUT_PATH = f'/media/ziyi/glory/logs_pin/diffusion/{prj}/compare'
 
@@ -36,7 +36,7 @@ def draw_comparison(GT_path: str,
     i = 0
     axes[0, i].imshow(GT)
     axes[0, i].text(
-        3, 40, "GT",
+        3, 40, "GANXY",
         fontsize=fontsize,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
@@ -79,24 +79,34 @@ def draw_comparison(GT_path: str,
     plt.close()
 
 if __name__ == '__main__':
-    GT_paths = []
-    image_paths = []
-    mask_paths = []
-    for dirpath, dirnames,filenames in os.walk(INPUT_PATH):
-        for file in filenames:
-            if file.endswith('.jpg') and file.startswith('Out'):
-                image_filepath = os.path.join(dirpath, file)
-                image_paths.append(image_filepath)
-            if file.endswith('.jpg') and file.startswith('GT'):
-                image_filepath = os.path.join(dirpath, file)
-                GT_paths.append(image_filepath)
-            if file.endswith('.jpg') and file.startswith('Mask'):
-                image_filepath = os.path.join(dirpath, file)
-                mask_paths.append(image_filepath)
-    image_paths.sort()
-    GT_paths.sort()
-    mask_paths.sort()
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    # for i in range(len(image_paths)):
+    # GT_paths = []
+    # image_paths = []
+    # mask_paths = []
+    # for dirpath, dirnames,filenames in os.walk(INPUT_PATH):
+    #     for file in filenames:
+    #         if file.endswith('.jpg') and file.startswith('Out'):
+    #             image_filepath = os.path.join(dirpath, file)
+    #             image_paths.append(image_filepath)
+    #         if file.endswith('.jpg') and file.startswith('GT'):
+    #             image_filepath = os.path.join(dirpath, file)
+    #             GT_paths.append(image_filepath)
+    #         if file.endswith('.jpg') and file.startswith('Mask'):
+    #             image_filepath = os.path.join(dirpath, file)
+    #             mask_paths.append(image_filepath)
+    # image_paths.sort()
+    # GT_paths.sort()
+    # mask_paths.sort()
+    # os.makedirs(OUTPUT_PATH, exist_ok=True)
+    # # for i in range(len(image_paths)):
+    # for i in range(500):
+    #     draw_comparison(GT_paths[i], image_paths[i], mask_paths[i] ,OUTPUT_PATH + f'/{i}.jpg')
+
     for i in range(500):
-        draw_comparison(GT_paths[i], image_paths[i], mask_paths[i] ,OUTPUT_PATH + f'/{i}.jpg')
+        GT = INPUT_PATH + f'/GT_{i}.jpg'
+        img = INPUT_PATH + f'/Out_{i}.jpg'
+        mask = INPUT_PATH + f'/Mask_{i}.jpg'
+        try:
+            draw_comparison(GT, img, mask, OUTPUT_PATH + f'/{i}.jpg')
+        except:
+            print(f"Error in {i}")
+            continue
