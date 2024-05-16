@@ -1,9 +1,12 @@
+import os
+
 from PIL import Image
 
 # Define the directories containing the images
-root = '/media/ziyi/glory/logs_pin/diffusion'
-folder_paths = ['celeba_smileAU_onnosmile', 'celeba_smileAU_onXY(240418_acgan)_orimask',
-                'celeba_smileAU_onXY(240418_acgan)_Neumask', 'celeba_smileAU_onXY(240418_acgan)_XYmask']
+root = '/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments'
+destination = 'compare_celebahq_smile256'
+folder_paths = ['test_celebahq_smile256_au_YY',
+                'test_celebahq_smile256_au_condTrans', 'test_celebahq_smile256_au_condGT']
 folder_paths = [f'{root}/{folder}/compare' for folder in folder_paths]
 
 for i in range(500):
@@ -26,5 +29,6 @@ for i in range(500):
         y_offset += img.height
 
     # Save or display the concatenated image
-    concatenated_image.save(root+'/compare/'+ str(i) + '.jpg')
+    os.makedirs(os.path.join(root, destination), exist_ok=True)
+    concatenated_image.save(os.path.join(root, destination, str(i) + '.jpg'))
     # concatenated_image.show()

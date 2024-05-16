@@ -11,7 +11,7 @@ AU = {0: 'Inner Brow Raiser',
       1: 'Outer Brow Raiser',
       2: 'Brow Lowerer',
       3: 'Upper Lid Raiser',
-      4: 'Cheek Raiser',
+      4: 'Nasolabial Deepener',
       5: 'Lid Tightener',
       6: 'Nose Wrinkler',
       7: 'Upper Lip Raiser',
@@ -27,9 +27,9 @@ AU = {0: 'Inner Brow Raiser',
       17: 'Eyes Closed',
       18: 'Mouth Stretcher',
       19: 'Lower Lip Depressor',
-      20: 'mouth',
-      21: 'eye',
-      22: 'whole face'
+      20: 'Mouth',
+      21: 'Eyes',
+      22: 'Whole Face'
       }
 
 EXP2AU = {
@@ -133,11 +133,12 @@ def plot_action_units_ellipsoid(au: int,
     s = 0  # start angle
     e = 360  # end angle
     f = cv2.FILLED
+    scale = h // 128
 
     if au == 22:  # whole face
         lower_face = [lndmks[i] for i in range(16, 0, -1)]
         upper_face = [lndmks[i] for i in range(17, 27)]
-        upper_face = [[x, y - 20] for x , y in upper_face]
+        upper_face = [[x, y - 20 * scale] for x , y in upper_face]
         face_lds = [ld for ld in lower_face] + [ld for ld in upper_face]
         face_lds = np.array(face_lds)
         points = face_lds.reshape((-1, 1, 2))
@@ -155,27 +156,27 @@ def plot_action_units_ellipsoid(au: int,
 
         x = int((l_x1 + r_x1) / 2)
         y = int((l_y1 + r_y1) / 2)
-        major = max(int((r_x1 - l_x1) / 2), 0) + 7
-        minor = max(int((r_y1 - l_y1) / 2), 0) + 7
+        major = max(int((r_x1 - l_x1) / 2), 0) + 7 * scale
+        minor = max(int((r_y1 - l_y1) / 2), 0) + 7 * scale
 
         if major == 0:
-            major = 5
+            major = 5 * scale
 
         if minor == 0:
-            minor = 5
+            minor = 5 * scale
 
         cv2.ellipse(att_map, (x, y), (major, minor), a, s, e, col, f)
 
         x = int((l_x2 + r_x2) / 2)
         y = int((l_y2 + r_y2) / 2)
-        major = max(int((r_x2 - l_x2) / 2), 0) + 7
-        minor = max(int((r_y2 - l_y2) / 2), 0) + 7
+        major = max(int((r_x2 - l_x2) / 2), 0) + 7 * scale
+        minor = max(int((r_y2 - l_y2) / 2), 0) + 7 * scale
 
         if major == 0:
-            major = 5
+            major = 5 * scale
 
         if minor == 0:
-            minor = 5
+            minor = 5 * scale
 
         cv2.ellipse(att_map, (x, y), (major, minor), a, s, e, col, f)
 
@@ -187,14 +188,14 @@ def plot_action_units_ellipsoid(au: int,
 
         x = int((l_x + r_x) / 2)
         y = int((l_y + r_y) / 2)
-        major = max(int((r_x - l_x) / 2), 0) + 7
-        minor = max(int((r_y - l_y) / 2), 0) + 10
+        major = max(int((r_x - l_x) / 2), 0) + 7 * scale
+        minor = max(int((r_y - l_y) / 2), 0) + 10 * scale
 
         if major == 0:
-            major = 5
+            major = 5 * scale
 
         if minor == 0:
-            minor = 5
+            minor = 5 * scale
 
         cv2.ellipse(att_map, (x, y), (major, minor), a, s, e, col, f)
 
@@ -271,8 +272,8 @@ def plot_action_units_ellipsoid(au: int,
         cv2.ellipse(att_map, (x, y), (major, minor), a, s, e, col, f)
 
     elif au == 4:  # AU 4: Cheek Raiser
-        major = round(w / 15)
-        minor = round(h / 10)
+        major = round(w / 15) + 3 * scale
+        minor = round(h / 10) + 5 * scale
 
         l_x1, l_y1 = lndmks[48]
         r_x1, r_y1 = lndmks[31]
@@ -281,7 +282,7 @@ def plot_action_units_ellipsoid(au: int,
         angle = math.atan2(r_y1 - l_y1, r_x1 - l_x1)
         angle = -round(math.degrees(angle)) - 30
 
-        cv2.ellipse(att_map, (x - 5, y), (major, minor), angle, s, e, col, f)
+        cv2.ellipse(att_map, (x - 5 * scale, y), (major, minor), angle, s, e, col, f)
 
         l_x1, l_y1 = lndmks[35]
         r_x1, r_y1 = lndmks[54]
@@ -291,7 +292,7 @@ def plot_action_units_ellipsoid(au: int,
         angle = math.atan2(r_y1 - l_y1, r_x1 - l_x1)
         angle = - round(math.degrees(angle)) + 20
 
-        cv2.ellipse(att_map, (x + 5, y), (major, minor), angle, s, e, col, f)
+        cv2.ellipse(att_map, (x + 5 * scale, y), (major, minor), angle, s, e, col, f)
 
     elif au == 5: # AU 5: Lid Tightener
         l_x1, _ = lndmks[36]
@@ -684,6 +685,39 @@ def fast_draw_heatmap(img: np.ndarray,
     plt.savefig(wfp, pad_inches=0, bbox_inches='tight', dpi=300)
     plt.close()
 
+def plot_all_heatmap(img: np.ndarray,
+                      heatmap: list,
+                    label: list,
+                      wfp: str,
+                      ):
+
+    ncols = len(heatmap) + 1
+
+    fig, axes = plt.subplots(nrows=1, ncols=ncols, squeeze=False)
+
+    fontsize = 5
+
+    axes[0, 0].imshow(img)
+
+    for i in range(1, ncols):
+        axes[0, i].imshow(img)
+        axes[0, i].imshow(heatmap[i - 1], alpha=0.3)
+        axes[0, i].text(
+            3, 40, label[i - 1],
+            fontsize=fontsize,
+            bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor':'none'}
+            # bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor':'none'}
+        )
+
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    for ax in fig.axes:
+        ax.axis('off')
+        ax.margins(0, 0)
+        ax.xaxis.set_major_locator(plt.NullLocator())
+        ax.yaxis.set_major_locator(plt.NullLocator())
+
+    plt.savefig(wfp, pad_inches=0, bbox_inches='tight', dpi=300)
+    plt.close()
 def facial_mask(landmark: list,
                 img_size: tuple):
     ld = [(int(x), int(y)) for x, y in landmark]
@@ -699,13 +733,14 @@ def facial_mask(landmark: list,
     mask = mask / 255
     return mask
 
-dataset = 'CelebA'
-prj = '240418_acgan'
-ep = str(90)
-direction = 'XY'
-input_path = f'/media/ziyi/glory/logs_pin/{dataset}/{prj}/results/ep{ep}/{direction}'
-output_path = os.path.join('/home/glory/projects/NTU_Parkinson_Project/results', dataset, prj+'_ep'+ep, direction, 'au_mask')
-landmark_path = os.path.join('/home/glory/projects/NTU_Parkinson_Project/results', dataset, prj+'_ep'+ep, direction, 'landmark')
+dataset = 'CelebAHQmask'
+prj = '240430_acgan01'
+ep = str(100)
+direction = 'Happiness'
+input_path = os.path.join('/home/glory/projects/NTU_Parkinson_Project/results', dataset, direction, 'images')
+output_path = os.path.join('/home/glory/projects/NTU_Parkinson_Project/results', dataset, 'au_mask')
+#transformed au mask
+landmark_path = os.path.join('/home/glory/projects/NTU_Parkinson_Project/results', dataset, prj+'_ep'+ep, 'YX', 'landmark')
 use_au = [3, 4, 5, 10, 15]
 
 if __name__=='__main__':
@@ -720,16 +755,16 @@ if __name__=='__main__':
                 image_filepath = os.path.join(dirpath, file)
                 image_paths.append(image_filepath)
                 landmark_paths.append(os.path.join(landmark_path, file.replace('.jpg', '.npy')))
-                diff_paths.append(os.path.join(dirpath, 'diff', file))
+                # diff_paths.append(os.path.join(dirpath, 'diff', file))
     assert len(image_paths) > 0, "No image found in the input directory"
-    # image_paths.sort()
-    # landmark_paths.sort()
+    image_paths.sort()
+    landmark_paths.sort()
 
-    #save by au
+    # #save by au
     # for au in [4, 20, 21, 22]:
     #     os.makedirs(os.path.join(output_path, AU[au]), exist_ok=True)
     #     print(AU[au])
-    #     for i in range(30):
+    #     for i in range(len(image_paths)):
     #         ip = image_paths[i]
     #         ld_path = landmark_paths[i]
     #         org_img = Image.open(ip).convert('RGB')
@@ -741,25 +776,44 @@ if __name__=='__main__':
     #         # fast_draw_landmarks(img=org_img, heatmap=att_map, ldmarks=ld, wfp=os.path.join(output_path, os.path.basename(ip)))
     #         # plt.imsave(os.path.join(output_path, os.path.basename(ip)), att_map, cmap='hot')
     #         fast_draw_heatmap(img=org_img, heatmap=att_map, cl=AU[au], wfp=os.path.join(output_path, AU[au], os.path.basename(ip)))
+    #
+    # # save all au
+    # for i in range(len(image_paths)):
+    # # for i in range(10):
+    #     ip = image_paths[i]
+    #     # diff_pth = diff_paths[i]
+    #     ld_path = landmark_paths[i]
+    #     org_img = Image.open(ip).convert('RGB')
+    #     # diff = Image.open(diff_pth).convert('RGB')
+    #     ld = np.load(ld_path)
+    #     ld = ld.tolist()
+    #     ld = [(int(x), int(y)) for x, y in ld]
+    #     h, w = org_img.size
+    #     au_ls = []
+    #     whole_face, _ = plot_action_units_ellipsoid(au=22, h=h, w=w, lndmks=ld)
+    #     for au in [4, 20, 21]:
+    #         att_map, is_roi = plot_action_units_ellipsoid(au=au, h=h, w=w, lndmks=ld)
+    #         au_ls.append(att_map)
+    #     union_au_heatmap = np.maximum.reduce(au_ls)
+    #     with_face_au_heatmap = np.minimum.reduce([union_au_heatmap, whole_face])
+    #         # plt.imsave(os.path.join(output_path, os.path.basename(ip)), att_map, cmap='hot')
+    #     fast_draw_heatmap(img=org_img, diff=None, heatmap=with_face_au_heatmap, cl="mask", wfp=os.path.join(output_path, os.path.basename(ip)))
 
-    # save all au
-    for i in range(len(image_paths)):
-    # for i in range(10):
-        ip = image_paths[i]
-        diff_pth = diff_paths[i]
-        ld_path = landmark_paths[i]
-        org_img = Image.open(ip).convert('RGB')
-        diff = Image.open(diff_pth).convert('RGB')
-        ld = np.load(ld_path)
-        ld = ld.tolist()
-        ld = [(int(x), int(y)) for x, y in ld]
-        h, w = org_img.size
-        au_ls = []
-        whole_face, _ = plot_action_units_ellipsoid(au=22, h=h, w=w, lndmks=ld)
-        for au in [4, 20, 21]:
-            att_map, is_roi = plot_action_units_ellipsoid(au=au, h=h, w=w, lndmks=ld)
-            au_ls.append(att_map)
-        union_au_heatmap = np.maximum.reduce(au_ls)
-        with_face_au_heatmap = np.minimum.reduce([union_au_heatmap, whole_face])
-            # plt.imsave(os.path.join(output_path, os.path.basename(ip)), att_map, cmap='hot')
-        fast_draw_heatmap(img=org_img, diff=diff, heatmap=with_face_au_heatmap, cl="mask", wfp=os.path.join(output_path, os.path.basename(ip)))
+    ip = '/home/glory/projects/NTU_Parkinson_Project/results/CelebAHQmask/Happiness/images/15.jpg'
+    ld_path = '/home/glory/projects/NTU_Parkinson_Project/results/CelebAHQmask/240430_acgan01_ep100/YX/landmark/15.npy'
+    org_img = Image.open(ip).convert('RGB')
+    ld = np.load(ld_path)
+    ld = ld.tolist()
+    ld = [(int(x), int(y)) for x, y in ld]
+    h, w = org_img.size
+    au_ls = []
+    whole_face, _ = plot_action_units_ellipsoid(au=22, h=h, w=w, lndmks=ld)
+    for au in [4, 20, 21]:
+        att_map, is_roi = plot_action_units_ellipsoid(au=au, h=h, w=w, lndmks=ld)
+        au_ls.append(att_map)
+    union_au_heatmap = np.maximum.reduce(au_ls)
+    with_face_au_heatmap = np.minimum.reduce([union_au_heatmap, whole_face])
+    au_ls.append(whole_face)
+    au_ls.append(with_face_au_heatmap)
+    plot_all_heatmap(img=org_img, heatmap=au_ls, label=[AU[4], AU[20], AU[21], AU[22], 'AU mask'],
+                     wfp=os.path.join(output_path, 'figure.jpg'))

@@ -197,7 +197,7 @@ class ColorizationDataset(data.Dataset):
         return len(self.flist)
 
 class InpaintAUDataset(data.Dataset):
-    def __init__(self, data_root, GT, condition, landmark, mask_config={}, data_len=-1, image_size=[128, 128], loader=pil_loader):
+    def __init__(self, data_root, GT, condition, landmark, mask_config={}, data_len=-1, image_size=256, loader=pil_loader):
         imgs = make_dataset(os.path.join(data_root, GT))
         cond_imgs = make_dataset(os.path.join(data_root, condition))
         lds = make_landmark_dataset(os.path.join(data_root, landmark,'landmark'))
@@ -214,20 +214,20 @@ class InpaintAUDataset(data.Dataset):
             self.cond_imgs = cond_imgs
         self.tfs = transforms.Compose([
                 transforms.CenterCrop((min(one_img.size), min(one_img.size))), #for celebA dataset
-                transforms.Resize((image_size[0], image_size[1])),
+                transforms.Resize((image_size, image_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5,0.5, 0.5])
         ])
         self.ld_tfs = transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.CenterCrop((min(one_img.size), min(one_img.size))), #for celebA dataset
-                transforms.Resize((image_size[0], image_size[1])),
+                transforms.Resize((image_size, image_size)),
                 transforms.ToTensor()
         ])
         self.loader = loader
         self.mask_config = mask_config
         self.mask_mode = self.mask_config['mask_mode']
-        self.image_size = image_size
+        self.image_size = [image_size, image_size]
         self.ori_image_size = one_img.size
         self.condition = condition
 
