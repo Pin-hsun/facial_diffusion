@@ -16,6 +16,16 @@ IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
 ]
+GT_IMG_SIZE = {
+    "CelebA": 128,
+    "CelebAHQmask": 256,
+    "AffectNet": 224
+}
+TRANSFORMED_IMG_SIZE = {
+    "CelebA": 128,
+    "CelebAHQmask": 256,
+    "AffectNet": 256
+}
 
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
@@ -203,7 +213,10 @@ class InpaintAUDataset(data.Dataset):
         cond_imgs = make_dataset(os.path.join(data_root, condition))
         lds = make_landmark_dataset(os.path.join(data_root, landmark,'landmark'))
 
-        one_img = loader(imgs[0])
+        if landmark == 'transformed':
+            self.ld_size = TRANSFORMED_IMG_SIZE[dataset]
+        else:
+            self.ld_size = GT_IMG_SIZE[dataset]
 
         if data_len > 0:
             self.imgs = imgs[:int(data_len)]
@@ -213,6 +226,7 @@ class InpaintAUDataset(data.Dataset):
             self.imgs = imgs
             self.lds = lds
             self.cond_imgs = cond_imgs
+
         self.tfs = transforms.Compose([
                 transforms.Resize((image_size, image_size)),
                 transforms.ToTensor(),
@@ -227,7 +241,6 @@ class InpaintAUDataset(data.Dataset):
         self.mask_config = mask_config
         self.mask_mode = self.mask_config['mask_mode']
         self.image_size = [image_size, image_size]
-        self.ori_image_size = one_img.size
         self.condition = condition
         self.dataset = dataset
         assert self.dataset in ['CelebA', 'CelebAHQmask', 'AffectNet']
@@ -238,7 +251,9 @@ class InpaintAUDataset(data.Dataset):
         img = self.tfs(self.loader(path))
         mask = self.get_mask(index)
         if self.mask_mode == 'au':
+            print(mask.shape)
             mask = self.ld_tfs(mask)
+            print(mask.shape)
         if self.condition == None:
             cond_image = img*(1. - mask) + mask*torch.randn_like(img)
         else:
@@ -284,7 +299,7 @@ class InpaintAUDataset(data.Dataset):
             mask = regular_mask | irregular_mask
         elif self.mask_mode == 'au':
             ld = np.load(self.lds[index]).tolist()
-            mask = facial_mask(ld, self.ori_image_size)
+            mask = facial_mask(ld, [self.ld_size, self.ld_size])
         elif self.mask_mode == 'file':
             pass
         else:
@@ -295,8 +310,8 @@ class InpaintAUDataset(data.Dataset):
 if __name__ == "__main__":
     import sys
     sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
-    dataset = InpaintAUDataset(dataset="AffectNet" ,data_root="/media/ziyi/glory/AffectNet/Happiness/test", GT="GT",
-                    condition="transformed", landmark="transformed", image_size= 256, mask_config={'mask_mode':'center'})
+    dataset = InpaintAUDataset(dataset="AffectNet" ,data_root="/media/ziyi/glory/AffectNet/Neutral/test", GT="GT",
+                    condition="transformed", landmark="GT", image_size= 256, mask_config={'mask_mode':'au'})
     print(len(dataset))
     for i in range(10):
         mask_img = dataset[i]['mask_image'].permute(1,2,0).numpy()

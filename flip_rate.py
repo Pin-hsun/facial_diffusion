@@ -7,7 +7,7 @@ from torchvision import transforms
 
 dataset = 'CelebA'
 assert dataset in ['CelebA', 'CelebAHQmask', 'AffectNet']
-prj = 'test_celeba_smile128_au_smile_conGT'
+prj = 'test_celeba_smile128_au_smile_conTrans'
 
 INPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/results/test/0'
 # OUTPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/compare'

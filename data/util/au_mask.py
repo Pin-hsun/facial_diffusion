@@ -133,7 +133,10 @@ def plot_action_units_ellipsoid(au: int,
     s = 0  # start angle
     e = 360  # end angle
     f = cv2.FILLED
-    scale = h // 128
+    if h <= 128:
+        scale = 1
+    else:
+        scale = 2
 
     if au == 22:  # whole face
         lower_face = [lndmks[i] for i in range(16, 0, -1)]

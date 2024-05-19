@@ -3,12 +3,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-prj = 'test_celebahq_smile256_au_condGT'
+img_size = 128
+prj = 'test_celeba_smile128_au_smile_conTrans'
 text_dict = {
-    'input': 'GT_X',
-    'cond': 'GT_X',
-    'mask': 'GT_X',
+    'input': 'GT_Y',
+    'cond': 'GAN_YX',
+    'mask': 'GT_Y AU',
 }
 INPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/results/test/0'
 OUTPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/compare'
@@ -31,7 +31,10 @@ def draw_comparison(GT_path: str,
     mask = np.array(mask)
     if cond_path:
         cond_img = Image.open(cond_path)
-        cond_img = cond_img.crop((2, 2, 258, 258))
+        if img_size == 128:
+            cond_img = cond_img.crop((2, 2, 130, 130))
+        elif img_size == 256:
+            cond_img = cond_img.crop((2, 2, 258, 258))
         cond_img = np.array(cond_img)
 
     diff = np.abs(img - GT)
@@ -47,7 +50,7 @@ def draw_comparison(GT_path: str,
     i = 0
     axes[0, i].imshow(GT)
     axes[0, i].text(
-        3, 40, "Input: " + text_dict['input'],
+        3, 15, "Input: " + text_dict['input'],
         fontsize=fontsize,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
@@ -55,7 +58,7 @@ def draw_comparison(GT_path: str,
 
     axes[0, i].imshow(cond_img)
     axes[0, i].text(
-        3, 40, "Condition: " + text_dict['cond'],
+        3, 15, "Condition: " + text_dict['cond'],
         fontsize=fontsize,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
@@ -63,7 +66,7 @@ def draw_comparison(GT_path: str,
 
     axes[0, i].imshow(mask)
     axes[0, i].text(
-        3, 40, "Mask: " + text_dict['mask'],
+        3, 15, "Mask: " + text_dict['mask'],
         fontsize=fontsize,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
@@ -71,7 +74,7 @@ def draw_comparison(GT_path: str,
 
     axes[0, i].imshow(img)
     axes[0, i].text(
-        3, 40, "output",
+        3, 15, "output",
         fontsize=fontsize,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
