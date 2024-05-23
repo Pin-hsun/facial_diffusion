@@ -2,16 +2,17 @@ import PIL.Image as Image
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from flip_rate import ResNetClassifier, flip_rate
 
-img_size = 128
-prj = 'test_celeba_smile128_au_smile_conTrans'
+img_size = 256
+prj = 'test_affectnet_au_YY_condTrans_maskAU'
 text_dict = {
     'input': 'GT_Y',
     'cond': 'GAN_YX',
-    'mask': 'GT_Y AU',
+    'mask': 'GAN_YX AU',
 }
-INPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/results/test/0'
-OUTPUT_PATH = f'/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments/{prj}/compare'
+INPUT_PATH = os.path.join("/home/gloria/projects/facial_diffusion/experiments", prj, 'results/test/0')
+OUTPUT_PATH = os.path.join("/home/gloria/projects/facial_diffusion/experiments", prj, 'compare')
 
 
 def draw_comparison(GT_path: str,
@@ -115,7 +116,7 @@ if __name__ == '__main__':
             if file.endswith('.jpg') and file.startswith('Mask'):
                 image_filepath = os.path.join(dirpath, file)
                 mask_paths.append(image_filepath)
-            if file.endswith('.jpg') and file.startswith('Process'):
+            if file.endswith('.jpg') and file.startswith('Cond'):
                 image_filepath = os.path.join(dirpath, file)
                 cond_path.append(image_filepath)
     image_paths.sort()
@@ -125,18 +126,18 @@ if __name__ == '__main__':
     os.makedirs(OUTPUT_PATH, exist_ok=True)
     # for i in range(len(image_paths)):
 
+    flip_rate = flip_rate(image_paths)
+    print(flip_rate)
+
     for i in range(500):
-        try:
-            draw_comparison(GT_path = GT_paths[i],
-                            img_path = image_paths[i],
-                            mask_path = mask_paths[i],
-                            wfp = OUTPUT_PATH + f'/{i}.jpg',
-                            text_dict=text_dict,
-                            cond_path = cond_path[i]
-                            )
-        except:
-            print(f"Error in num {i} : {GT_paths[i]}")
-            continue
+        id = GT_paths[i].split('/')[-1].split('_')[-1]
+        draw_comparison(GT_path = GT_paths[i],
+                        img_path = image_paths[i],
+                        mask_path = mask_paths[i],
+                        wfp = OUTPUT_PATH + '/' + id,
+                        text_dict=text_dict,
+                        cond_path = cond_path[i]
+                        )
 
     # for i in range(500):
     #     GT = INPUT_PATH + f'/GT_{i}.jpg'

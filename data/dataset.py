@@ -232,6 +232,12 @@ class InpaintAUDataset(data.Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5,0.5, 0.5])
         ])
+        self.cond_tfs = transforms.Compose([
+            transforms.Resize((image_size // 8, image_size // 8)),
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        ])
         self.ld_tfs = transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.Resize((image_size, image_size)),
@@ -251,14 +257,12 @@ class InpaintAUDataset(data.Dataset):
         img = self.tfs(self.loader(path))
         mask = self.get_mask(index)
         if self.mask_mode == 'au':
-            print(mask.shape)
             mask = self.ld_tfs(mask)
-            print(mask.shape)
         if self.condition == None:
             cond_image = img*(1. - mask) + mask*torch.randn_like(img)
         else:
             cond_path = self.cond_imgs[index]
-            cond_image = self.tfs(self.loader(cond_path))
+            cond_image = self.cond_tfs(self.loader(cond_path))
         mask_img = img*(1. - mask) + mask
 
         ret['gt_image'] = img
@@ -310,14 +314,17 @@ class InpaintAUDataset(data.Dataset):
 if __name__ == "__main__":
     import sys
     sys.path.append('/home/glory/projects/Palette-Image-to-Image-Diffusion-Models')
-    dataset = InpaintAUDataset(dataset="AffectNet" ,data_root="/media/ziyi/glory/AffectNet/Neutral/test", GT="GT",
+    dataset = InpaintAUDataset(dataset="AffectNet" ,data_root="/media/ExtHDD02/AffectNet/Neutral/test", GT="GT",
                     condition="transformed", landmark="GT", image_size= 256, mask_config={'mask_mode':'au'})
     print(len(dataset))
     for i in range(10):
         mask_img = dataset[i]['mask_image'].permute(1,2,0).numpy()
         cond_img = dataset[i]['cond_image'].permute(1,2,0).numpy()
+        gt_img = dataset[i]['gt_image'].permute(1,2,0).numpy()
         mask_img = (mask_img + 1) / 2
         plt.imsave('tmp/' + str(i) + 'mask.jpg', mask_img)
         cond_img = (cond_img + 1) / 2
         plt.imsave('tmp/' + str(i) + 'cond.jpg', cond_img)
         plt.close()
+        # plt.imsave('tmp/' + str(i) + 'gt.jpg', gt_img)
+        # plt.close()

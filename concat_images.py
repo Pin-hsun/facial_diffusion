@@ -1,19 +1,22 @@
+import glob
 import os
 
 from PIL import Image
 
 # Define the directories containing the images
-root = '/home/glory/projects/Palette-Image-to-Image-Diffusion-Models/experiments'
-destination = 'compare_celebahq_smile256'
-folder_paths = ['test_celebahq_smile256_au_YY',
-                'test_celebahq_smile256_au_condTrans', 'test_celebahq_smile256_au_condGT']
+root = '/home/gloria/projects/facial_diffusion/experiments'
+destination = 'compare_affectnet_au'
+folder_paths = ['test_affectnet_au_YY_condGT_maskAU','test_affectnet_au_YY_condTrans_maskAU',
+                'test_affectnet_au_XY_condGT_maskAU', 'test_affectnet_au_XY_condTrans_maskAU']
 folder_paths = [f'{root}/{folder}/compare' for folder in folder_paths]
+img_paths = [glob.glob(folder +  '/*') for folder in folder_paths]
 
 for i in range(500):
-    image_name = str(i) + '.jpg'  # The common filename of images you want to concatenate
+    # image_names = []
 
     # Load the images
-    images = [Image.open(f"{folder}/{image_name}") for folder in folder_paths]
+    # images = [Image.open(f"{folder}/{image_name}") for folder in folder_paths]
+    images = [Image.open(img_paths[folder][i])for folder in range(4)]
 
     # Get total width and maximum height (for horizontal concatenation)
     max_width = max(img.width for img in images)
