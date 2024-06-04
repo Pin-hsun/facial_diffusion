@@ -1,18 +1,12 @@
+import shutil
 import PIL.Image as Image
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from flip_rate import ResNetClassifier, flip_rate
-
-img_size = 256
-prj = 'test_affectnet_au_YY_condTrans_maskAU'
-text_dict = {
-    'input': 'GT_Y',
-    'cond': 'GAN_YX',
-    'mask': 'GAN_YX AU',
-}
-INPUT_PATH = os.path.join("/home/gloria/projects/facial_diffusion/experiments", prj, 'results/test/0')
-OUTPUT_PATH = os.path.join("/home/gloria/projects/facial_diffusion/experiments", prj, 'compare')
+from cleanfid import fid
+from models.metric import inception_score
+from core.base_dataset import BaseDataset
 
 
 def draw_comparison(GT_path: str,
@@ -20,6 +14,7 @@ def draw_comparison(GT_path: str,
                     mask_path: str,
                     wfp: str,
                     text_dict: dict,
+                    img_size,
                     cond_path = None,
                     ):
     os.makedirs(os.path.dirname(wfp), exist_ok=True)
@@ -80,14 +75,6 @@ def draw_comparison(GT_path: str,
         bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
     )
 
-    # axes[0, i].imshow(GT)
-    # axes[0, i].imshow(diff, alpha=0.3)
-    # axes[0, i].text(
-    #     3, 40, "diff",
-    #     fontsize=fontsize,
-    #     bbox={'facecolor': 'white', 'pad': 1, 'alpha': 0.8, 'edgecolor': 'none'}
-    # )
-
     plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
     for ax in fig.axes:
         ax.axis('off')
@@ -95,12 +82,24 @@ def draw_comparison(GT_path: str,
         ax.xaxis.set_major_locator(plt.NullLocator())
         ax.yaxis.set_major_locator(plt.NullLocator())
 
-    # plt.show()
-
     plt.savefig(wfp, pad_inches=0, bbox_inches='tight', dpi=300)
     plt.close()
 
 if __name__ == '__main__':
+    dataset = "CelebAHQmask"
+    img_size = 256
+    root = "/home/gloria/projects/facial_diffusion/experiments"
+    prj = 'test_celebahq_hybrid_XY_condTrans'
+    text_dict = {
+        'input': 'Ox',
+        'cond': 'Gxy',
+        'mask': 'center',
+    }
+
+    INPUT_PATH = os.path.join(root, prj, 'results/test/0')
+    OUTPUT_PATH = os.path.join(root, prj, 'compare')
+    os.makedirs(os.path.join(root, prj, "Out"), exist_ok=True)
+    os.makedirs(os.path.join(root, prj, "GT"), exist_ok=True)
     GT_paths = []
     image_paths = []
     mask_paths = []
@@ -108,11 +107,15 @@ if __name__ == '__main__':
     for dirpath, dirnames,filenames in os.walk(INPUT_PATH):
         for file in filenames:
             if file.endswith('.jpg') and file.startswith('Out'):
+                name = file.split('_')[-1]
                 image_filepath = os.path.join(dirpath, file)
+                shutil.copy(image_filepath, os.path.join(root, prj, "Out", name))
                 image_paths.append(image_filepath)
             if file.endswith('.jpg') and file.startswith('GT'):
+                name = file.split('_')[-1]
                 image_filepath = os.path.join(dirpath, file)
                 GT_paths.append(image_filepath)
+                shutil.copy(image_filepath, os.path.join(root, prj, "GT", name))
             if file.endswith('.jpg') and file.startswith('Mask'):
                 image_filepath = os.path.join(dirpath, file)
                 mask_paths.append(image_filepath)
@@ -126,8 +129,13 @@ if __name__ == '__main__':
     os.makedirs(OUTPUT_PATH, exist_ok=True)
     # for i in range(len(image_paths)):
 
-    flip_rate = flip_rate(image_paths)
-    print(flip_rate)
+    flip_rate = flip_rate(dataset, image_paths)
+    fid_score = fid.compute_fid(os.path.join(root, prj, "GT"), os.path.join(root, prj, "Out"))
+    # is_mean, is_std = inception_score(BaseDataset(os.path.join(root, prj, "Out")), cuda=True, batch_size=8, resize=True, splits=10)
+
+    print("Flip rate:", flip_rate)
+    print('FID: {}'.format(fid_score))
+    # print('IS:{} {}'.format(is_mean, is_std))
 
     for i in range(500):
         id = GT_paths[i].split('/')[-1].split('_')[-1]
@@ -136,15 +144,6 @@ if __name__ == '__main__':
                         mask_path = mask_paths[i],
                         wfp = OUTPUT_PATH + '/' + id,
                         text_dict=text_dict,
+                        img_size=img_size,
                         cond_path = cond_path[i]
                         )
-
-    # for i in range(500):
-    #     GT = INPUT_PATH + f'/GT_{i}.jpg'
-    #     img = INPUT_PATH + f'/Out_{i}.jpg'
-    #     mask = INPUT_PATH + f'/Mask_{i}.jpg'
-    #     try:
-    #         draw_comparison(GT, img, mask, OUTPUT_PATH + f'/{i}.jpg')
-    #     except:
-    #         print(f"Error in {i}")
-    #         continue

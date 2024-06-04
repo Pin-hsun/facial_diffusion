@@ -141,7 +141,7 @@ def plot_action_units_ellipsoid(au: int,
     if au == 22:  # whole face
         lower_face = [lndmks[i] for i in range(16, 0, -1)]
         upper_face = [lndmks[i] for i in range(17, 27)]
-        upper_face = [[x, y - 20 * scale] for x , y in upper_face]
+        upper_face = [[x, y - 10 * scale] for x , y in upper_face]
         face_lds = [ld for ld in lower_face] + [ld for ld in upper_face]
         face_lds = np.array(face_lds)
         points = face_lds.reshape((-1, 1, 2))
@@ -721,7 +721,7 @@ def plot_all_heatmap(img: np.ndarray,
 
     plt.savefig(wfp, pad_inches=0, bbox_inches='tight', dpi=300)
     plt.close()
-def facial_mask(landmark: list,
+def au_mask(landmark: list,
                 img_size: tuple):
     ld = [(int(x), int(y)) for x, y in landmark]
     w, h = img_size
@@ -733,6 +733,15 @@ def facial_mask(landmark: list,
     union_au_heatmap = np.maximum.reduce(au_ls)
     with_face_au_heatmap = np.minimum.reduce([union_au_heatmap, whole_face])
     mask = np.expand_dims(with_face_au_heatmap, axis=2)
+    mask = mask / 255
+    return mask
+
+def facial_mask(landmark: list,
+                img_size: tuple):
+    ld = [(int(x), int(y)) for x, y in landmark]
+    w, h = img_size
+    whole_face, _ = plot_action_units_ellipsoid(au=22, h=h, w=w, lndmks=ld)
+    mask = np.expand_dims(whole_face, axis=2)
     mask = mask / 255
     return mask
 
